@@ -146,6 +146,7 @@ function AuthenticatedApp() {
     appointmentStart: string
   } | null>(null)
   const [cancelAppointmentId, setCancelAppointmentId] = useState<string | null>(null)
+  const [cancelConfirmed, setCancelConfirmed] = useState(false)
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null)
   const [reportStartDate, setReportStartDate] = useState(localToday)
   const [reportEndDate, setReportEndDate] = useState(localToday)
@@ -593,6 +594,7 @@ function AuthenticatedApp() {
       if (cancelError) throw cancelError
       removeGuestAppointmentLink(appointmentId)
       setCancelAppointmentId(null)
+      setCancelConfirmed(false)
       setNotice('Desistência registrada. A consulta foi cancelada, o horário liberado e o link do cliente invalidado.')
       await loadWorkspace()
     } catch (cancelError) {
@@ -1328,7 +1330,7 @@ function AuthenticatedApp() {
                   const appointmentStarted = new Date(guestAppointment.appointment_start).getTime() <= now
                   const appointmentEnded = new Date(guestAppointment.appointment_end).getTime() <= now
                   return (
-                  <li key={guestAppointment.id} className="flex flex-col justify-between gap-3 py-4 first:pt-0 sm:flex-row sm:items-center">
+                  <li key={guestAppointment.id} className="grid min-w-0 gap-3 py-4 first:pt-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                     <div>
                       <p className="font-semibold text-stone-900">{guestAppointment.patient_name}</p>
                       <p className="mt-1 text-sm text-stone-600">{guestAppointment.patient_whatsapp}</p>
@@ -1369,7 +1371,7 @@ function AuthenticatedApp() {
                         </p>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
                       {guestAppointment.status === 'agendado' && (
                         <button
                           className={`rounded-xl border px-4 py-2.5 text-sm font-semibold ${
@@ -1423,7 +1425,11 @@ function AuthenticatedApp() {
                           onClick={() => {
                             setPaymentForm(null)
                             setRescheduleForm(null)
-                            setCancelAppointmentId((current) => current === guestAppointment.id ? null : guestAppointment.id)
+                            setCancelAppointmentId((current) => {
+                              const nextId = current === guestAppointment.id ? null : guestAppointment.id
+                              setCancelConfirmed(false)
+                              return nextId
+                            })
                           }}
                         >
                           Registrar desistência
@@ -1431,15 +1437,24 @@ function AuthenticatedApp() {
                       )}
                     </div>
                     {cancelAppointmentId === guestAppointment.id && (
-                      <div className="w-full rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                      <div className="w-full min-w-0 rounded-2xl border border-rose-200 bg-rose-50 p-4 sm:col-span-full">
                         <p className="text-sm leading-6 text-rose-950">
                           Confirmar que o cliente desistiu? A consulta será cancelada, o horário ficará disponível e o link privado deixará de funcionar.
                         </p>
+                        <label className="mt-3 flex items-start gap-3 text-sm leading-5 text-rose-950">
+                          <input
+                            className="mt-1 size-4 shrink-0 accent-rose-700"
+                            type="checkbox"
+                            checked={cancelConfirmed}
+                            onChange={(event) => setCancelConfirmed(event.target.checked)}
+                          />
+                          Entendi que esta ação cancela a consulta e libera o horário.
+                        </label>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             className="inline-flex min-h-11 items-center justify-center rounded-xl bg-rose-700 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-55"
                             type="button"
-                            disabled={busy}
+                            disabled={busy || !cancelConfirmed}
                             onClick={() => void cancelGuestAppointment(guestAppointment.id)}
                           >
                             {busy ? 'Registrando...' : 'Confirmar desistência'}
@@ -1448,7 +1463,10 @@ function AuthenticatedApp() {
                             className="min-h-11 rounded-xl border border-stone-300 px-4 text-sm font-semibold text-stone-700"
                             type="button"
                             disabled={busy}
-                            onClick={() => setCancelAppointmentId(null)}
+                            onClick={() => {
+                              setCancelAppointmentId(null)
+                              setCancelConfirmed(false)
+                            }}
                           >
                             Voltar
                           </button>
@@ -1456,7 +1474,7 @@ function AuthenticatedApp() {
                       </div>
                     )}
                     {guestAppointmentLinks[guestAppointment.id] && (
-                      <div className="w-full rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                      <div className="w-full min-w-0 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:col-span-full">
                         <label className="block text-sm font-semibold text-emerald-950" htmlFor={`guest-appointment-link-${guestAppointment.id}`}>
                           Link privado de {guestAppointment.patient_name}
                         </label>
@@ -1469,14 +1487,14 @@ function AuthenticatedApp() {
                         />
                         <div className="mt-3 flex flex-col items-start gap-3">
                           <button
-                            className={buttonClass}
+                            className={`${buttonClass} w-full sm:w-auto`}
                             type="button"
                             onClick={() => void copyGuestAppointmentLink(guestAppointment.id)}
                           >
                             Copiar link deste atendimento
                           </button>
                           <a
-                            className={buttonClass}
+                            className={`${buttonClass} w-full sm:w-auto`}
                             href={whatsAppAppointmentUrl(guestAppointment) ?? undefined}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -1488,7 +1506,7 @@ function AuthenticatedApp() {
                     )}
                     {rescheduleForm?.appointmentId === guestAppointment.id && (
                       <form
-                        className="grid w-full gap-3 rounded-2xl bg-stone-50 p-4 sm:grid-cols-[1fr_auto]"
+                        className="grid w-full min-w-0 gap-3 rounded-2xl bg-stone-50 p-4 sm:col-span-full sm:grid-cols-[1fr_auto]"
                         onSubmit={(event) => void rescheduleGuestAppointment(event, guestAppointment.id)}
                       >
                         <label className="block text-sm font-medium text-stone-700">
@@ -1510,7 +1528,7 @@ function AuthenticatedApp() {
                     )}
                     {paymentForm?.appointmentId === guestAppointment.id && (
                       <form
-                        className="grid w-full gap-3 rounded-2xl bg-emerald-50 p-4 sm:grid-cols-[1fr_1fr_auto]"
+                        className="grid w-full min-w-0 gap-3 rounded-2xl bg-emerald-50 p-4 sm:col-span-full sm:grid-cols-[1fr_1fr_auto]"
                         onSubmit={(event) => {
                           event.preventDefault()
                           void finishGuestAppointment(guestAppointment.id)
