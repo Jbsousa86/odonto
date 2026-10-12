@@ -26,6 +26,18 @@ export function localDateKey(value: string) {
   return `${year}-${month}-${day}`
 }
 
+export function countCompletedAppointments<T extends { status: string; appointment_start: string }>(
+  appointments: T[],
+  startDate: string,
+  endDate: string,
+) {
+  return appointments.filter((appointment) => {
+    if (appointment.status !== 'finalizado') return false
+    const appointmentDate = localDateKey(appointment.appointment_start)
+    return appointmentDate >= startDate && appointmentDate <= endDate
+  }).length
+}
+
 export function summarizePayments<T extends PaymentRecord>(appointments: T[], startDate: string, endDate: string) {
   const byMethod: Record<PaymentMethod, PaymentMethodTotal> = {
     dinheiro: { count: 0, cents: 0 },

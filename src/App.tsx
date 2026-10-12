@@ -4,7 +4,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabase'
 import type { Database } from './lib/database.types'
 import { buildWhatsAppUrl, normalizeWhatsApp } from './lib/whatsapp'
 import { buildAppointmentLink, createAppointmentLinkSecret, hashAppointmentLinkSecret } from './lib/appointment-link'
-import { paymentMethods, summarizePayments, type PaymentMethod } from './lib/payment-report'
+import { countCompletedAppointments, paymentMethods, summarizePayments, type PaymentMethod } from './lib/payment-report'
 
 type Dentist = Database['odonto']['Tables']['dentistas']['Row']
 type Procedure = Database['odonto']['Tables']['procedimentos']['Row']
@@ -348,6 +348,10 @@ function AuthenticatedApp() {
   const reportRangeValid = reportStartDate <= reportEndDate
   const paymentReport = useMemo(
     () => reportRangeValid ? summarizePayments(guestAppointments, reportStartDate, reportEndDate) : null,
+    [guestAppointments, reportEndDate, reportRangeValid, reportStartDate],
+  )
+  const completedAppointmentCount = useMemo(
+    () => reportRangeValid ? countCompletedAppointments(guestAppointments, reportStartDate, reportEndDate) : null,
     [guestAppointments, reportEndDate, reportRangeValid, reportStartDate],
   )
 
@@ -1628,6 +1632,11 @@ function AuthenticatedApp() {
                   <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">{formatCurrency(paymentReport.totalCents / 100)}</p>
                   <p className="mt-1 text-sm text-stone-500">{paymentReport.totalCount} {paymentReport.totalCount === 1 ? 'atendimento pago' : 'atendimentos pagos'}</p>
                 </div>
+                <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
+                  <p className="text-sm font-medium text-stone-600">Consultas realizadas</p>
+                  <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">{completedAppointmentCount ?? 0}</p>
+                  <p className="mt-1 text-sm text-stone-500">{completedAppointmentCount === 1 ? 'consulta no período' : 'consultas no período'}</p>
+                </div>
                 {paymentMethods.map((method) => {
                   const summary = paymentReport.byMethod[method]
                   const label = method === 'dinheiro' ? 'Dinheiro' : method === 'cartao' ? 'Cartão' : 'Pix'
@@ -1640,6 +1649,9 @@ function AuthenticatedApp() {
                   )
                 })}
               </div>
+              <p className="text-sm leading-6 text-stone-500">
+                As consultas são contadas pela data do atendimento; os recebimentos consideram a data do pagamento.
+              </p>
               {paymentReport.records.length === 0 ? (
                 <EmptyState title="Nenhum recebimento no período" text="Atendimentos finalizados com pagamento registrado aparecerão aqui." />
               ) : (
@@ -1827,16 +1839,18 @@ export function ClinicWelcomeScreen({ onEnter }: { onEnter: () => void }) {
         />
       )}
       {!imageError && <div className="absolute inset-0 z-0 bg-black/25" aria-hidden="true" />}
-      <div className="absolute inset-x-0 bottom-0 z-10 bg-linear-to-t from-black/75 via-black/35 to-transparent px-6 pb-10 pt-32 text-center sm:pb-14">
-        <p className="text-sm font-semibold uppercase tracking-[.15em] text-white/90">Área da clínica</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Bem-vindo à clínica</h1>
-        <button
-          className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-emerald-950 shadow-lg transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900"
-          type="button"
-          onClick={onEnter}
-        >
-          Acessar sistema
-        </button>
+      <div className="absolute inset-0 z-10 grid place-items-center px-6 py-8 text-center">
+        <div className="w-full max-w-2xl">
+          <p className="text-sm font-semibold uppercase tracking-[.15em] text-white/90">Área da clínica</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Bem-vindo à clínica</h1>
+          <button
+            className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-emerald-950 shadow-lg transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900"
+            type="button"
+            onClick={onEnter}
+          >
+            Acessar sistema
+          </button>
+        </div>
       </div>
     </main>
   )
