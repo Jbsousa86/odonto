@@ -14,7 +14,7 @@ type ScheduleBlock = Database['odonto']['Tables']['bloqueios_agenda']['Row']
 type GuestAppointmentDetails = Database['odonto']['Functions']['get_guest_appointment']['Returns'][number]
 
 const fieldClass =
-  'mt-1 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15'
+  'mt-1 min-w-0 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15'
 const buttonClass =
   'inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-55'
 
@@ -122,6 +122,19 @@ function AuthenticatedApp() {
     whatsapp: '',
     email: '',
     dataNascimento: '',
+    rua: '',
+    bairro: '',
+    cidade: '',
+  })
+  const [editingClinicClientId, setEditingClinicClientId] = useState<string | null>(null)
+  const [clinicClientEdit, setClinicClientEdit] = useState({
+    nomeCompleto: '',
+    whatsapp: '',
+    email: '',
+    dataNascimento: '',
+    rua: '',
+    bairro: '',
+    cidade: '',
   })
   const [paymentForm, setPaymentForm] = useState<{
     appointmentId: string
@@ -422,19 +435,54 @@ function AuthenticatedApp() {
           whatsapp: normalizeWhatsApp(newClinicClient.whatsapp),
           email: newClinicClient.email.trim() || null,
           data_nascimento: newClinicClient.dataNascimento || null,
+          rua: newClinicClient.rua.trim() || null,
+          bairro: newClinicClient.bairro.trim() || null,
+          cidade: newClinicClient.cidade.trim() || null,
           criado_por: user.id,
         })
         .select('id')
         .single()
       if (insertError) throw insertError
       setNewGuestAppointment((current) => ({ ...current, clinicClientId: data.id }))
-      setNewClinicClient({ nomeCompleto: '', whatsapp: '', email: '', dataNascimento: '' })
+      setNewClinicClient({ nomeCompleto: '', whatsapp: '', email: '', dataNascimento: '', rua: '', bairro: '', cidade: '' })
       setShowClinicClientsList(false)
       setActiveTab('visao-geral')
       setNotice('Cliente cadastrado. Ele já está disponível na Visão geral e na agenda para agendamento.')
       await loadWorkspace()
     } catch (insertError) {
       setError(`Não foi possível cadastrar o cliente: ${errorMessage(insertError)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function updateClinicClient(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!supabase || !editingClinicClientId) return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const { data, error: updateError } = await supabase
+        .from('clinic_clients')
+        .update({
+          nome_completo: clinicClientEdit.nomeCompleto.trim(),
+          whatsapp: normalizeWhatsApp(clinicClientEdit.whatsapp),
+          email: clinicClientEdit.email.trim() || null,
+          data_nascimento: clinicClientEdit.dataNascimento || null,
+          rua: clinicClientEdit.rua.trim() || null,
+          bairro: clinicClientEdit.bairro.trim() || null,
+          cidade: clinicClientEdit.cidade.trim() || null,
+        })
+        .eq('id', editingClinicClientId)
+        .select('*')
+        .single()
+      if (updateError) throw updateError
+      setClinicClients((current) => current.map((client) => client.id === data.id ? data : client))
+      setEditingClinicClientId(null)
+      setNotice('Dados do cliente atualizados.')
+    } catch (updateError) {
+      setError(`Não foi possível atualizar os dados do cliente: ${errorMessage(updateError)}`)
     } finally {
       setBusy(false)
     }
@@ -836,8 +884,8 @@ function AuthenticatedApp() {
         </div>
       </div>
       </header>
-      <main className="mx-auto w-[95%] max-w-none py-8 sm:py-10">
-      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+      <main className="mx-auto min-w-0 w-[95%] max-w-none py-6 sm:py-10">
+      <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[.15em] text-emerald-800">Odonto • Agenda</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
@@ -866,13 +914,13 @@ function AuthenticatedApp() {
           </p>
         </div>
         {isStaff && (
-          <nav aria-label="Seções da agenda" className="flex rounded-xl border border-stone-200 bg-white p-1">
+          <nav aria-label="Seções da agenda" className="grid w-full grid-cols-2 gap-1 rounded-xl border border-stone-200 bg-white p-1 lg:flex lg:w-auto">
             <TabButton active={activeTab === 'visao-geral'} onClick={() => { setShowClinicClientsList(false); setActiveTab('visao-geral') }}>Visão geral</TabButton>
             <TabButton active={activeTab === 'agendar'} onClick={() => setActiveTab('agendar')}>Agendar</TabButton>
             <TabButton active={activeTab === 'clientes'} onClick={() => setActiveTab('clientes')}>Cadastrar cliente</TabButton>
             <TabButton active={activeTab === 'relatorios'} onClick={() => setActiveTab('relatorios')}>Relatórios</TabButton>
-            <span className="mx-1 hidden h-6 border-l border-stone-200 sm:block" aria-hidden="true" />
-            <TabButton active={activeTab === 'configuracoes'} onClick={() => setActiveTab('configuracoes')}>Configurações</TabButton>
+            <span className="mx-1 hidden h-6 border-l border-stone-200 lg:block" aria-hidden="true" />
+            <TabButton className="col-span-2 sm:col-span-1" active={activeTab === 'configuracoes'} onClick={() => setActiveTab('configuracoes')}>Configurações</TabButton>
           </nav>
         )}
       </div>
@@ -1024,10 +1072,37 @@ function AuthenticatedApp() {
                               {client.nome_completo}
                             </button>
                             <p className="mt-1 text-sm text-stone-600">{client.whatsapp}{client.email ? ` · ${client.email}` : ''}</p>
+                            {(client.rua || client.bairro || client.cidade) && (
+                              <p className="mt-1 text-sm text-stone-600">
+                                {[client.rua, client.bairro, client.cidade].filter(Boolean).join(', ')}
+                              </p>
+                            )}
                           </div>
                           <button
                             className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-stone-700"
                             type="button"
+                            disabled={busy}
+                            onClick={() => {
+                              setEditingClinicClientId(client.id)
+                              setClinicClientEdit({
+                                nomeCompleto: client.nome_completo,
+                                whatsapp: client.whatsapp,
+                                email: client.email ?? '',
+                                dataNascimento: client.data_nascimento ?? '',
+                                rua: client.rua ?? '',
+                                bairro: client.bairro ?? '',
+                                cidade: client.cidade ?? '',
+                              })
+                              setError('')
+                              setNotice('')
+                            }}
+                          >
+                            Editar dados
+                          </button>
+                          <button
+                            className={buttonClass}
+                            type="button"
+                            disabled={busy}
                             onClick={() => {
                               setNewGuestAppointment((current) => ({ ...current, clinicClientId: client.id }))
                               setActiveTab('agendar')
@@ -1036,6 +1111,42 @@ function AuthenticatedApp() {
                             Agendar para este cliente
                           </button>
                         </div>
+                        {editingClinicClientId === client.id && (
+                          <form className="mt-4 grid gap-4 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 md:grid-cols-2" onSubmit={updateClinicClient}>
+                            <label className="block text-sm font-medium text-stone-700">
+                              Nome completo
+                              <input className={fieldClass} value={clinicClientEdit.nomeCompleto} onChange={(event) => setClinicClientEdit({ ...clinicClientEdit, nomeCompleto: event.target.value })} required maxLength={255} />
+                            </label>
+                            <label className="block text-sm font-medium text-stone-700">
+                              WhatsApp
+                              <input className={fieldClass} type="tel" autoComplete="tel" value={clinicClientEdit.whatsapp} onChange={(event) => setClinicClientEdit({ ...clinicClientEdit, whatsapp: event.target.value })} required maxLength={20} placeholder="+55 11 99999-9999" />
+                            </label>
+                            <label className="block text-sm font-medium text-stone-700">
+                              E-mail <span className="font-normal text-stone-500">(opcional)</span>
+                              <input className={fieldClass} type="email" autoComplete="email" value={clinicClientEdit.email} onChange={(event) => setClinicClientEdit({ ...clinicClientEdit, email: event.target.value })} maxLength={255} />
+                            </label>
+                            <label className="block text-sm font-medium text-stone-700">
+                              Data de nascimento <span className="font-normal text-stone-500">(opcional)</span>
+                              <input className={fieldClass} type="date" value={clinicClientEdit.dataNascimento} onChange={(event) => setClinicClientEdit({ ...clinicClientEdit, dataNascimento: event.target.value })} />
+                            </label>
+                            <label className="block text-sm font-medium text-stone-700">
+                              Rua <span className="font-normal text-stone-500">(opcional)</span>
+                              <input className={fieldClass} autoComplete="street-address" value={clinicClientEdit.rua} onChange={(event) => setClinicClientEdit({ ...clinicClientEdit, rua: event.target.value })} maxLength={255} />
+                            </label>
+                            <label className="block text-sm font-medium text-stone-700">
+                              Bairro <span className="font-normal text-stone-500">(opcional)</span>
+                              <input className={fieldClass} autoComplete="address-level3" value={clinicClientEdit.bairro} onChange={(event) => setClinicClientEdit({ ...clinicClientEdit, bairro: event.target.value })} maxLength={120} />
+                            </label>
+                            <label className="block text-sm font-medium text-stone-700">
+                              Cidade <span className="font-normal text-stone-500">(opcional)</span>
+                              <input className={fieldClass} autoComplete="address-level2" value={clinicClientEdit.cidade} onChange={(event) => setClinicClientEdit({ ...clinicClientEdit, cidade: event.target.value })} maxLength={120} />
+                            </label>
+                            <div className="flex flex-wrap gap-2 md:col-span-2">
+                              <button className={buttonClass} disabled={busy}>{busy ? 'Salvando...' : 'Salvar alterações'}</button>
+                              <button className="min-h-11 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-stone-700" type="button" disabled={busy} onClick={() => setEditingClinicClientId(null)}>Cancelar</button>
+                            </div>
+                          </form>
+                        )}
                         <div
                           id={`client-history-${client.id}`}
                           className="mt-3 rounded-xl bg-stone-50 px-4 py-3"
@@ -1463,6 +1574,18 @@ function AuthenticatedApp() {
                 Data de nascimento <span className="font-normal text-stone-500">(opcional)</span>
                 <input className={fieldClass} type="date" value={newClinicClient.dataNascimento} onChange={(event) => setNewClinicClient({ ...newClinicClient, dataNascimento: event.target.value })} />
               </label>
+              <label className="block text-sm font-medium text-stone-700">
+                Rua <span className="font-normal text-stone-500">(opcional)</span>
+                <input className={fieldClass} autoComplete="street-address" value={newClinicClient.rua} onChange={(event) => setNewClinicClient({ ...newClinicClient, rua: event.target.value })} maxLength={255} />
+              </label>
+              <label className="block text-sm font-medium text-stone-700">
+                Bairro <span className="font-normal text-stone-500">(opcional)</span>
+                <input className={fieldClass} autoComplete="address-level3" value={newClinicClient.bairro} onChange={(event) => setNewClinicClient({ ...newClinicClient, bairro: event.target.value })} maxLength={120} />
+              </label>
+              <label className="block text-sm font-medium text-stone-700">
+                Cidade <span className="font-normal text-stone-500">(opcional)</span>
+                <input className={fieldClass} autoComplete="address-level2" value={newClinicClient.cidade} onChange={(event) => setNewClinicClient({ ...newClinicClient, cidade: event.target.value })} maxLength={120} />
+              </label>
               <button className={`${buttonClass} md:col-span-2`} disabled={busy}>{busy ? 'Cadastrando...' : 'Cadastrar cliente'}</button>
             </form>
           </div>
@@ -1760,8 +1883,8 @@ function EmptyState({ title, text }: { title: string; text: string }) {
   return <div className="mt-5 rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-6 text-center"><p className="font-semibold text-stone-800">{title}</p><p className="mt-1 text-sm leading-6 text-stone-600">{text}</p></div>
 }
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) {
-  return <button className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${active ? 'bg-emerald-800 text-white' : 'text-stone-600 hover:bg-stone-100'}`} onClick={onClick}>{children}</button>
+function TabButton({ active, onClick, children, className = '' }: { active: boolean; onClick: () => void; children: string; className?: string }) {
+  return <button className={`min-w-0 rounded-lg px-2 py-2 text-center text-xs font-semibold leading-tight transition lg:px-3 lg:text-sm ${active ? 'bg-emerald-800 text-white' : 'text-stone-600 hover:bg-stone-100'} ${className}`} onClick={onClick}>{children}</button>
 }
 
 function App() {

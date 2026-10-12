@@ -105,6 +105,9 @@ export type Database = {
           whatsapp: string
           email: string | null
           data_nascimento: string | null
+          rua: string | null
+          bairro: string | null
+          cidade: string | null
           criado_por: string
           criado_em: string
           atualizado_em: string
@@ -115,6 +118,9 @@ export type Database = {
           whatsapp: string
           email?: string | null
           data_nascimento?: string | null
+          rua?: string | null
+          bairro?: string | null
+          cidade?: string | null
           criado_por: string
           criado_em?: string
           atualizado_em?: string
@@ -124,7 +130,9 @@ export type Database = {
           whatsapp?: string
           email?: string | null
           data_nascimento?: string | null
-          atualizado_em?: string
+          rua?: string | null
+          bairro?: string | null
+          cidade?: string | null
         }
       >
       bloqueios_agenda: Table<

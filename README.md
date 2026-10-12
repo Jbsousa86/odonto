@@ -36,6 +36,8 @@ MVP responsivo de agendamento odontológico usando React, Vite, TailwindCSS e Su
    - `supabase/migrations/202610110007_appointment_payments_and_reports.sql`
    - `supabase/migrations/202610110008_reschedule_guest_appointments.sql`
    - `supabase/migrations/202610110009_cancel_guest_appointments.sql`
+   - `supabase/migrations/202610120001_restrict_clinic_client_updates.sql`
+   - `supabase/migrations/202610120002_clinic_client_address.sql`
 
    Também é possível aplicar as migrations pelo CLI:
 
